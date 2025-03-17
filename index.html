@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ask Your Database</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 700px;
+            margin: auto;
+            text-align: center;
+            padding: 20px;
+            background-color: #f4f7fc;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        input {
+            width: calc(100% - 20px);
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #sqlQuery {
+            font-weight: bold;
+            margin-top: 15px;
+            word-wrap: break-word;
+            color: #555;
+        }
+        #queryResults {
+            margin-top: 20px;
+            text-align: left;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        td {
+            background-color: #f9f9f9;
+        }
+        .loading {
+            font-style: italic;
+            color: #777;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const queryInput = document.getElementById("query");
+            queryInput.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") {
+                    submitQuery();
+                }
+            });
+        });
+
+        async function submitQuery() {
+            const userQuery = document.getElementById("query").value;
+            const sqlQueryElem = document.getElementById("sqlQuery");
+            const queryResultsElem = document.getElementById("queryResults");
+            const resultsContainer = document.getElementById("resultsContainer");
+
+            if (!userQuery) {
+                alert("Please enter a query!");
+                return;
+            }
+
+            sqlQueryElem.innerText = "";
+            queryResultsElem.innerHTML = "<p class='loading'>Processing your request...</p>";
+            resultsContainer.classList.add("hidden");
+
+            const apiUrl = `${window.location.origin}/query`;  
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query: userQuery })
+                });
+
+                const data = await response.json();
+                queryResultsElem.innerHTML = "";
+                resultsContainer.classList.remove("hidden");
+
+                if (data.sql_query) {
+                    sqlQueryElem.innerText = "Generated SQL Query: " + data.sql_query;
+                } else {
+                    sqlQueryElem.innerText = "Error generating SQL.";
+                }
+
+                if (data.results && data.results.length > 0) {
+                    queryResultsElem.innerHTML = generateTable(data.results);
+                } else if (data.error) {
+                    queryResultsElem.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                } else {
+                    queryResultsElem.innerHTML = "<p>No results found.</p>";
+                }
+            } catch (error) {
+                queryResultsElem.innerHTML = `<p style="color: red;">Server error: Unable to reach the backend.</p>`;
+            }
+        }
+
+        function generateTable(data) {
+            let table = "<table><tr>";
+            const headers = Object.keys(data[0]);  
+            headers.forEach(header => table += `<th>${header}</th>`);
+            table += "</tr>";
+
+            data.forEach(row => {
+                table += "<tr>";
+                headers.forEach(header => table += `<td>${row[header]}</td>`);
+                table += "</tr>";
+            });
+
+            table += "</table>";
+            return table;
+        }
+    </script>
+</head>
+<body>
+    <h2>Ask Your Database</h2>
+    <div class="container">
+        <input type="text" id="query" placeholder="Enter your question here">
+        <button onclick="submitQuery()">Submit</button>
+        
+        <p id="sqlQuery"></p>
+
+        <div id="resultsContainer" class="hidden">
+            <h3>Query Results</h3>
+            <div id="queryResults"></div>
+        </div>
+    </div>
+</body>
+</html>
